@@ -97,7 +97,7 @@ def is_cache_updated():
     return delta.total_seconds() // 3600 < 24
 
 def get_movies(cached=False):
-    if cached or is_cache_updated():
+    if cached:
         print("Returning cached data")
         return load_cache(MOVIES_CACHE)
 

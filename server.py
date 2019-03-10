@@ -7,6 +7,11 @@ from application import app
 server = Flask(__name__)
 
 @server.route('/')
-def index():
-    movies = app.get_movies()
+def index(update=False):
+    cached = False if update else app.is_cache_updated()
+    movies = app.get_movies(cached=cached)
     return render_template('index.html', movies=movies)
+
+@server.route('/update')
+def update():
+    return index(update=True)
