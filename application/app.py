@@ -7,10 +7,10 @@ import json
 import re
 import asyncio
 import concurrent.futures
-import datetime
+from datetime import datetime, timedelta
 from imdb import IMDb
 from movie import Movie
-from utils import save_cache, load_cache
+from utils import save_cache, load_cache, get_mod_time
 import os
 
 MULTIKINO_URL = "https://multikino.pl/repertuar/gdansk"
@@ -90,10 +90,14 @@ async def get_all_imdb_api_data(movies):
             else:
                 print(f"no data for: {movies[title].title}")
 
-
+def is_cache_updated():
+    mod_time = get_mod_time(MOVIES_CACHE)
+    mod_time = datetime.fromtimestamp(mod_time)
+    delta = datetime.now() - mod_time
+    return delta.total_seconds() // 3600 < 24
 
 def get_movies(cached=False):
-    if cached:
+    if cached or is_cache_updated():
         print("Returning cached data")
         return load_cache(MOVIES_CACHE)
 
@@ -101,8 +105,12 @@ def get_movies(cached=False):
     options.add_argument('--disable-gpu')
     options.add_argument('--no-sandbox')
     options.add_argument('--headless')
-    chrome_bin_path = os.environ['GOOGLE_CHROME_BIN']
-    chromedriver_path = os.environ['CHROMEDRIVER_PATH']
+    chrome_bin_path = os.environ.get('GOOGLE_CHROME_BIN', None)
+    chromedriver_path = os.environ.get('CHROMEDRIVER_PATH', None)
+    if not chrome_bin_path or not chromedriver_path:
+        print('Chrome problem. Check if chrome and chromedriver are installed and envionmental variables are set.')
+        return []
+
     options.binary_location = chrome_bin_path
     # options.set_headless(headless=True)
 
@@ -126,14 +134,14 @@ def get_movies(cached=False):
             list(map(lambda item: item.getText(), movie.find_all(attrs={"rv-text": "category.name"})))
         genres = ', '.join(genres)
 
-        d1 = datetime.datetime.strptime(date, "%d.%m.%Y")
-        if d1 > datetime.datetime.now() + datetime.timedelta(days=7):
+        d1 = datetime.strptime(date, "%d.%m.%Y")
+        if d1 > datetime.now() + timedelta(days=7):
             continue
 
         if any(keyword in title for keyword in FILTER_KEYWORDS):
             continue
 
-        released = d1 <= datetime.datetime.now()
+        released = d1 <= datetime.now()
 
         movie = Movie(title=title, votes=votes, date=date, description=description, genres=genres, released=released)
         movie.rating.mul = rating
@@ -160,4 +168,4 @@ if __name__ == '__main__':
     movies = get_movies(cached=False)
     print()
     for movie in movies:
-        print(movie.title, movie.title_eng, (movie.rating.imdb, movie.rating.fweb), movie.get_poster(), movie.runtime)
+        print(movie.title, movie.title_eng, (movie.rating.imdb, movie.rating.fweb), movie.poster_imdb, movie.poster_fweb, movie.runtime)

@@ -1,3 +1,4 @@
+import os
 import pickle
 
 def to_float(value, decimals=1):
@@ -15,3 +16,8 @@ def save_cache(data, filename):
 def load_cache(filename):
     with open(filename, 'rb') as file:
         return pickle.load(file)
+
+def get_mod_time(filename):
+    if os.path.exists(filename):
+        return os.path.getmtime(filename)
+    return 0
