@@ -8,5 +8,5 @@ server = Flask(__name__)
 
 @server.route('/')
 def index():
-    movies = app.get_movies(cached=True)
+    movies = app.get_movies(cached=False)
     return render_template('index.html', movies=movies)
