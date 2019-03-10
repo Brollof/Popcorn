@@ -10,6 +10,8 @@ import concurrent.futures
 import datetime
 from imdb import IMDb
 from movie import Movie
+from utils import save_cache, load_cache
+import os
 
 MULTIKINO_URL = "https://multikino.pl/repertuar/gdansk"
 FILMWEB_POSTER_URL = "http://1.fwcdn.pl/po"
@@ -21,6 +23,7 @@ FWEB_API_FORUM_URL_IDX = 8
 FWEB_API_POSTER_IDX = 11
 
 FILTER_KEYWORDS = ["National Theatre Live", "LIGA MISTRZÓW", "Balet Bolszoj", "Met Opera"]
+MOVIES_CACHE = os.path.join(os.path.dirname(__file__), 'movies.data')
 
 imdb = IMDb()
 
@@ -44,6 +47,7 @@ def get_filmweb_api_data(title):
     url = f'https://ssl.filmweb.pl/api?version=1.0&appId=android&methods=getFilmInfoFull%20[{idd}]%5Cn&signature=1.0,{sig}'
     html = requests.get(url).text;
     data = re.sub(r" t:\d+", "", html.split('\n')[1])
+    print(data)
     return (title, json.loads(data))
 
 async def get_all_filmweb_api_data(movies):
@@ -82,32 +86,33 @@ async def get_all_imdb_api_data(movies):
             if data:
                 movies[title].rating.imdb = data.get('rating', 0)
                 movies[title].poster_imdb = data.get('cover url', None)
-                movies[title].runtime = data.get('runtime', 0)
-                # movies[title].poster_full = data['full-size cover url']
+                movies[title].poster_imdb_full = data.get('full-size cover url', None)
+                movies[title].runtime = data.get('runtime', 0)[0]
             else:
                 print(f"no data for: {movies[title].title}")
 
-def get_movies(skip_cinema=False):
+
+
+def get_movies(cached=False):
+    if cached:
+        print("Returning cached data")
+        return load_cache(MOVIES_CACHE)
+
     options = Options()
     options.add_argument('--disable-gpu')
     options.add_argument('--no-sandbox')
     options.add_argument('--headless')
     # options.set_headless(headless=True)
 
-    if skip_cinema:
-        with open('html.txt', 'r', encoding='utf-8') as file:
-            html = file.read()
-    else:
-        browser = webdriver.Chrome(options=options)
-        browser.get(MULTIKINO_URL)
-        html = browser.page_source
-        browser.quit()
-        with open('html.txt', 'w', encoding='utf-8') as file:
-            file.write(html)
-
+    print("Getting multikino.pl...")
+    browser = webdriver.Chrome(options=options)
+    browser.get(MULTIKINO_URL)
+    html = browser.page_source
+    browser.quit()
 
     movies = []
 
+    print("Parsing...")
     soup = BeautifulSoup(html, "html.parser")
     for movie in soup.find_all(class_='filmlist__info--inverted'):
         title = movie.find(attrs={"rv-text": "item.title"}).getText()
@@ -136,16 +141,21 @@ def get_movies(skip_cinema=False):
 
     print('Total movies found (+7 days from now): {}'.format(len(movies)))
 
-
     loop = asyncio.new_event_loop()
+    print("Filmweb api call...")
     loop.run_until_complete(get_all_filmweb_api_data(hash_movies))
+    print("IMDB api call...")
     loop.run_until_complete(get_all_imdb_api_data(hash_movies))
 
-    return sortMoviesDescending(movies)
+    movies = sortMoviesDescending(movies)
+    print("Saving cache...")
+    save_cache(movies, MOVIES_CACHE)
+    print("OK")
+    return movies
 
 
 if __name__ == '__main__':
-    movies = get_movies(skip_cinema=True)
+    movies = get_movies(cached=False)
     print()
     for movie in movies:
         print(movie.title, movie.title_eng, (movie.rating.imdb, movie.rating.fweb), movie.get_poster(), movie.runtime)

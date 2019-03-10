@@ -1,13 +1,12 @@
-from flask import Flask
-import app
+import sys
+sys.path.append("application")
+
+from flask import Flask, render_template
+from application import app
 
 server = Flask(__name__)
 
 @server.route('/')
-def main():
-    movies = app.get_movies(skip_cinema=True)
-    return "Empty"
-
-@server.route('/hello/<name>')
-def hello_world(name):
-    return 'Hello, {}!'.format(name)
+def index():
+    movies = app.get_movies(cached=True)
+    return render_template('index.html', movies=movies)

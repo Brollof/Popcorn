@@ -13,6 +13,7 @@ class Movie:
         self.url = None
         self.poster_imdb = None
         self.poster_fweb = None
+        self.poster_imdb_full = None
         self.released = released
         self.runtime = 0
 
@@ -29,4 +30,17 @@ class Movie:
         return self.rating.imdb
 
     def get_poster(self):
-        return self.poster_imdb or self.poster_fweb
+        return self.poster_imdb_full or self.poster_imdb or self.poster_fweb
+
+    def get_pretty_runtime(self):
+        hours = int(self.runtime) // 60
+        minutes = int(self.runtime) % 60
+        if hours:
+            return f"{hours} godz. {minutes} min."
+        return f"{minutes} min."
+
+
+if __name__ == '__main__':
+    m = Movie()
+    m.runtime = '100'
+    print(m.get_pretty_runtime())
