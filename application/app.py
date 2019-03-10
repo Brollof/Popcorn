@@ -47,7 +47,6 @@ def get_filmweb_api_data(title):
     url = f'https://ssl.filmweb.pl/api?version=1.0&appId=android&methods=getFilmInfoFull%20[{idd}]%5Cn&signature=1.0,{sig}'
     html = requests.get(url).text;
     data = re.sub(r" t:\d+", "", html.split('\n')[1])
-    print(data)
     return (title, json.loads(data))
 
 async def get_all_filmweb_api_data(movies):
@@ -102,10 +101,13 @@ def get_movies(cached=False):
     options.add_argument('--disable-gpu')
     options.add_argument('--no-sandbox')
     options.add_argument('--headless')
+    chrome_bin_path = os.environ['GOOGLE_CHROME_BIN']
+    chromedriver_path = os.environ['CHROMEDRIVER_PATH']
+    options.binary_location = chrome_bin_path
     # options.set_headless(headless=True)
 
     print("Getting multikino.pl...")
-    browser = webdriver.Chrome(options=options)
+    browser = webdriver.Chrome(executable_path=chromedriver_path, options=options)
     browser.get(MULTIKINO_URL)
     html = browser.page_source
     browser.quit()
