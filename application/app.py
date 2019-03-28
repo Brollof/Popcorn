@@ -86,7 +86,7 @@ async def get_all_imdb_api_data(movies):
                 movies[title].rating.imdb = data.get('rating', 0)
                 movies[title].poster_imdb = data.get('cover url', None)
                 movies[title].poster_imdb_full = data.get('full-size cover url', None)
-                movies[title].runtime = data.get('runtime', 0)[0]
+                movies[title].runtime = data.get('runtime', [0])[0]
             else:
                 print(f"no data for: {movies[title].title}")
 
