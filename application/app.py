@@ -13,7 +13,8 @@ from movie import Movie
 from utils import save_cache, load_cache, get_mod_time
 import os
 
-MULTIKINO_URL = "https://multikino.pl/repertuar/gdansk"
+# Full link example: "https://multikino.pl/repertuar/gdansk/teraz-gramy/alfabetyczny?data=02-05-2019,08-05-2019"
+MULTIKINO_URL = "https://multikino.pl/repertuar/gdansk/teraz-gramy/alfabetyczny"
 FILMWEB_POSTER_URL = "http://1.fwcdn.pl/po"
 
 FWEB_API_ENG_TITLE_IDX = 1
@@ -27,7 +28,13 @@ MOVIES_CACHE = os.path.join(os.path.dirname(__file__), 'movies.data')
 
 imdb = IMDb()
 
-def sortMoviesDescending(movies):
+def create_multikino_url():
+    start = datetime.now()
+    end = start + timedelta(days=6)
+    date_range = f"?data={start.day:02}-{start.month:02}-{start.year},{end.day:02}-{end.month:02}-{end.year}"
+    return MULTIKINO_URL + date_range
+
+def sort_movies_descending(movies):
     """ Sort movies by rating in descending order.
     """
     return sorted(movies, reverse=True)
@@ -114,9 +121,10 @@ def get_movies(cached=False):
     options.binary_location = chrome_bin_path
     # options.set_headless(headless=True)
 
-    print("Getting multikino.pl...")
+    url = create_multikino_url()
+    print(f"Getting {url} ...")
     browser = webdriver.Chrome(executable_path=chromedriver_path, options=options)
-    browser.get(MULTIKINO_URL)
+    browser.get(url)
     html = browser.page_source
     browser.quit()
 
@@ -124,26 +132,24 @@ def get_movies(cached=False):
 
     print("Parsing...")
     soup = BeautifulSoup(html, "html.parser")
-    for movie in soup.find_all(class_='filmlist__info--inverted'):
-        title = movie.find(attrs={"rv-text": "item.title"}).getText()
-        rating = movie.find(attrs={"rv-text": "item.rank_value"}).getText()
-        votes = movie.find(attrs={"rv-text": "item.rank_votes"}).getText()
-        date = movie.find(attrs={"rv-text": "item.info_release"}).getText()
-        description = movie.find(attrs={"rv-text": "item.synopsis_short"}).getText()
-        genres = list(map(lambda item: item.getText(), movie.find_all(attrs={"rv-text": "genre.name"}))) or \
-            list(map(lambda item: item.getText(), movie.find_all(attrs={"rv-text": "category.name"})))
-        genres = ', '.join(genres)
+    for movie in soup.find_all(class_='filmlist__info'):
+        title = movie.select(".filmlist__title > span")[0].get_text()
+        try:
+            rating = movie.find(attrs={"rv-show": "film.rank_value"}).select("span")[0].get_text()
+            votes = movie.find(attrs={"rv-show": "film.rank_votes"}).select("span")[0].get_text()
+        except AttributeError:
+            print(f"No rating for {title}")
+        except Exception as e:
+            print(f"Something really bad happend: {e}")
 
-        d1 = datetime.strptime(date, "%d.%m.%Y")
-        if d1 > datetime.now() + timedelta(days=7):
-            continue
+        description = movie.select(".filmlist__synopsis > p")[0].get_text()
+        genres = list(map(lambda item: item.get_text(), movie.find_all("a", class_="film-details__item")))
+        genres = ', '.join(genres) or "-"
 
         if any(keyword in title for keyword in FILTER_KEYWORDS):
             continue
 
-        released = d1 <= datetime.now()
-
-        movie = Movie(title=title, votes=votes, date=date, description=description, genres=genres, released=released)
+        movie = Movie(title=title, votes=votes, description=description, genres=genres)
         movie.rating.mul = rating
         movies.append(movie)
 
@@ -157,7 +163,7 @@ def get_movies(cached=False):
     print("IMDB api call...")
     loop.run_until_complete(get_all_imdb_api_data(hash_movies))
 
-    movies = sortMoviesDescending(movies)
+    movies = sort_movies_descending(movies)
     print("Saving cache...")
     save_cache(movies, MOVIES_CACHE)
     print("OK")
