@@ -28,6 +28,15 @@ MOVIES_CACHE = os.path.join(os.path.dirname(__file__), 'movies.data')
 
 imdb = IMDb()
 
+def save_to_file(filename, data):
+    try:
+        with open(filename, "w") as file:
+            file.write(data)
+        print(f"Data saved to file: {filename}")
+    except Exception as ex:
+        print(f"Writing to file {filename} failed!")
+        print(ex)
+
 def create_multikino_url():
     start = datetime.now()
     end = start + timedelta(days=6)
@@ -126,8 +135,8 @@ def get_movies(cached=False):
     browser = webdriver.Chrome(executable_path=chromedriver_path, options=options)
     browser.get(url)
     html = browser.page_source
+    save_to_file("multikino.html", html)
     print(f"browser: {browser}")
-    print(html)
     browser.quit()
 
     movies = []
