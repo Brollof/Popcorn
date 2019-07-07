@@ -126,6 +126,8 @@ def get_movies(cached=False):
     browser = webdriver.Chrome(executable_path=chromedriver_path, options=options)
     browser.get(url)
     html = browser.page_source
+    print(f"browser: {browser}")
+    print(html)
     browser.quit()
 
     movies = []
@@ -171,7 +173,7 @@ def get_movies(cached=False):
 
 
 if __name__ == '__main__':
-    movies = get_movies(cached=False)
+    movies = get_movies(cached=True)
     print()
     for movie in movies:
         print(movie.title, movie.title_eng, (movie.rating.imdb, movie.rating.fweb), movie.poster_imdb, movie.poster_fweb, movie.runtime)
