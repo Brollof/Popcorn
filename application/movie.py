@@ -26,15 +26,14 @@ class Movie:
     def get_rating(self):
         """ Returns movie rating.
         Movies will be compared with each other according to this value.
-        """ 
+        """
         return self.rating.imdb
 
     def get_poster(self):
         return self.poster_imdb_full or self.poster_imdb or self.poster_fweb
 
     def get_pretty_runtime(self):
-        hours = int(self.runtime) // 60
-        minutes = int(self.runtime) % 60
+        hours, minutes = divmod(self.runtime, 60)
         if hours:
             return f"{hours} godz. {minutes} min."
         return f"{minutes} min."
